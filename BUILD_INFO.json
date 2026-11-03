@@ -1,0 +1,14 @@
+{
+  "bundle": "D:\\opencode\\HongLouMeng2\\RenPy版\\HongLouMeng2-RenPy-Portable",
+  "renpy": "8.5.3",
+  "files": 9545,
+  "bytes": 1692685074,
+  "launcher": "红楼梦.exe",
+  "missing_log": "missing_assets.log",
+  "runtime_sha256": "db3c4a9202b9d0809e8458f61d2f3d5e780aadd2c0317dcda1f18ae4555b22ab",
+  "screens_sha256": "523c64fc3dfeb067b4b94a212ba3b1b483f8b91a7de915269c8399fbac586a1e",
+  "script_sha256": "27d8336d0279267f9a1b629beddd211c77201ece030395f35c95e31ae6c6afd1",
+  "source_script_sha256": "27d8336d0279267f9a1b629beddd211c77201ece030395f35c95e31ae6c6afd1",
+  "choices_patched": 106,
+  "build_time": "2026-10-23 12:47:37"
+}
