@@ -455,7 +455,7 @@ style say_window:
     xsize 1280
     ysize 260
     yalign 1.0
-    padding (64, 14, 64, 10)
+    padding (64, 46, 64, 10)
 
 style say_name:
     color "#000000"
