@@ -1,0 +1,28 @@
+# Ren'Py 引擎运行时（体积大，可用 Ren'Py 8.5.3 SDK 重新打进去）
+/RenPy/
+/*.exe
+
+# 从原版 Data.HAC 解包出来的素材：背景 / 立绘 / 语音 / 影片 / 字体
+/game/images/
+/game/audio/
+/game/video/
+/game/fonts/
+
+# Ren'Py 运行时产物
+/game/cache/
+/game/saves/
+/saves/
+/tmp/
+/game/*.rpyc
+/log.txt
+/traceback.txt
+/errors.txt
+/missing_assets.log
+/game/zz_probe.rpy
+
+# 系统杂项
+__pycache__/
+*.pyc
+Thumbs.db
+desktop.ini
+.DS_Store
