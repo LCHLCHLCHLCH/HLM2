@@ -111,3 +111,78 @@
 ## 选项分支修复
 
 - switch 表达式从 ['lit','FLAG...'] 修正为 RGET 读取；106 处菜单分支已修补。
+
+## 存读档界面改版（2026-11-16）
+
+- 左页七条竖栏改成七个存档位，点列即存/读（原来是 8 个隐形按钮，第 8 个在框外）。
+  格位名用「页码-格号」（`1-1`…`6-7`），与既有存档文件同名，老存档仍然可见。
+- 每格显示竖排章节名；进入 `script_XXXX` 时由 `config.label_callbacks` 查
+  `Chapter.CPP` 的 308 条 `SetChapter` 表写进 `save_name`，所以新存档的
+  「章节名」不再是空。旧存档没有该字段，格内显示「旧档」。
+- 去掉页面底部的三枚红印章（新/选/自）。
+- 翻页键重做：整条侧栏都是热区，文字沿用原版竖排「下一页 / 上一页」，
+  到首页/末页自动置灰；页码改为 `1 / 6`。
+- 缩略图变清晰：`config.thumbnail_width/height` 从 Ren'Py 对 4:3 游戏的默认
+  66×50 改成 640×480，预览框按 4:3 显示 480×360（原来把 66×50 放大到
+  480×400，糊了 7 倍多）。旧存档的缩略图仍是 66×50，无法追溯修复。
+- 踩坑记录：Ren'Py 的 `xpos` 给浮点数是「按容器比例」，`xpos 90.0` 等于把整列
+  推到 90 屏宽之外；格位坐标一律用整数。
+
+## 右键/ESC 绕过玉牌菜单进入存档页（2026-11-16 修复）
+
+现象：有时在游戏里右键，不出现六枚玉牌菜单，直接跳到存档界面。
+
+原因：右键走的是 Ren'Py 的 `_game_menu_screen`。这个变量是普通 store 变量，
+**会被一起写进存档**。老存档里存的是 Ren'Py 老布局的默认值 `"save_screen"`
+（`common/00layout.rpy` 在 `_game_menu_screen is None` 时填的旧标签），
+读档时它覆盖了 `options.rpy` 里的 `define _game_menu_screen = "esc_menu"`，
+于是 `_game_menu` 直接 `jump save_screen` → 显示 `save` 界面，玉牌菜单被跳过。
+所以「有时」= 只有在读过旧存档之后才复现，新开局和重开程序都正常。
+
+实测（临时 trace 脚本，已删）：
+
+```
+init999  _game_menu_screen='esc_menu'
+读档后    _game_menu_screen='save_screen'
+右键      label='_game_menu' → label='save_screen' → show_screen='save'   # 复现
+修复后    label='_game_menu' → show_screen='esc_menu'                     # 正常
+```
+
+修复：`runtime.rpy` 里把 `_game_menu_screen` 钉回 `esc_menu`，挂到
+`config.start_callbacks` 和 `config.after_load_callbacks` 上（开局、每次读档都执行）。
+新存档写回的就是 `esc_menu`；旧存档不必改写，读档时会被钉住。
+
+---
+
+## 临时演示入口：芙蓉女儿诔（第四版 + 第五版）
+
+**状态**：已接入，**未**并入主流程（AA172/AA173 原样未动），随时可整块删除。
+
+### 加了什么
+
+| 文件 | 改动 |
+|---|---|
+| `game/hlm_lei_demo.rpy` | 新增。整段演示 `label hlm_lei_demo`，共 4 场（场一 五更托梦／场二 清晨石后／场三 夜里写诔／场四 芙蓉前读诔＋焚帛／场五 回房），约 200 句。结尾 `renpy.full_restart()` 回标题。 |
+| `game/screens.rpy` | `screen main_menu` 末尾加一个 `textbutton "· 试看：芙蓉女儿诔（临时）"`，`xpos 44 ypos 884`，`action Start("hlm_lei_demo")`，上下都有 `# ==== 临时 ====` 注释夹住。 |
+
+主界面三个主按钮（醒梦/归梦/入梦）一个字没改；新按钮在左下角留白处，不重叠、不抢焦点。
+
+### 怎么撤
+
+1. 删 `game/hlm_lei_demo.rpy`；
+2. 删 `game/screens.rpy` 里 `# ==== 临时：芙蓉女儿诔试看入口` 到 `# ==== 临时入口结束 ====` 之间的 6 行；
+3. 删 `game/hlm_lei_demo.rpyc`（Ren'Py 下次启动也会自己清）。
+
+### 已验证
+
+- `renpy lint`：0 error（对白块 30,499 → 30,699）。
+- 真机启动，主界面渲染正常，临时按钮在左下角，未遮挡任何主体元素。
+- 鼠标实点该按钮 → 进入 `hlm_lei_demo`，第一场台词/背景/立绘正常。
+- 快进跑完整段：场一 → 场五 一次跑通，无 `traceback.txt` / `errors.txt`，结束自动回标题。
+- 读诔段（68 块）以 `center_say` 呈现，横贯画面的半透明字幕带、黑字居中，无缺字方框、无溢出。
+
+### 已知取舍
+
+- 场四背景用 `BG330`（凹晶馆池上·夜）顶「池上芙蓉」，全库无芙蓉专用背景。
+- 场三「裁一幅冰鲛縠」与后面「纸就卷了」的材质说法不统一，按原文优先取了「縠」，焚的那句留「纸」。
+- 演示结束直接 `full_restart` 回标题，不在存档里留下「章节」，也不写 `set_chapter`。

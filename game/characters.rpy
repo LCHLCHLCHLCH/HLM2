@@ -17,7 +17,7 @@ define ch_097 = Character("冯紫英", who_color="#000000", what_color="#1f1a14"
 define ch_017 = Character("刘姥姥", who_color="#000000", what_color="#1f1a14", ctc=Transform("gui/ui/flower_mark.png", zoom=1.1), ctc_position="nestled")
 define ch_109 = Character("北静王", who_color="#000000", what_color="#1f1a14", ctc=Transform("gui/ui/flower_mark.png", zoom=1.1), ctc_position="nestled")
 define ch_058 = Character("史湘云", who_color="#000000", what_color="#1f1a14", ctc=Transform("gui/ui/flower_mark.png", zoom=1.1), ctc_position="nestled")
-define ch_032 = Character("史湘云(男）", who_color="#000000", what_color="#1f1a14", ctc=Transform("gui/ui/flower_mark.png", zoom=1.1), ctc_position="nestled")
+define ch_032 = Character("史湘云", who_color="#000000", what_color="#1f1a14", ctc=Transform("gui/ui/flower_mark.png", zoom=1.1), ctc_position="nestled")
 define ch_086 = Character("司棋", who_color="#000000", what_color="#1f1a14", ctc=Transform("gui/ui/flower_mark.png", zoom=1.1), ctc_position="nestled")
 define ch_110 = Character("周大娘", who_color="#000000", what_color="#1f1a14", ctc=Transform("gui/ui/flower_mark.png", zoom=1.1), ctc_position="nestled")
 define ch_031 = Character("周姐姐", who_color="#000000", what_color="#1f1a14", ctc=Transform("gui/ui/flower_mark.png", zoom=1.1), ctc_position="nestled")

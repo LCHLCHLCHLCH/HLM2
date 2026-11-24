@@ -7,6 +7,12 @@ define config.has_music = True
 define config.has_voice = True
 define config.window_icon = "gui/window_icon.png"
 define config.default_text_cps = 35
+
+# 存档缩略图。Ren'Py 对 4:3 游戏默认只存 66x50（common/00layout.rpy），
+# 存档界面放大到 480x360 就是糊的；这里改成 640x480，缩放着看是清晰的。
+define config.thumbnail_width = 640
+define config.thumbnail_height = 480
+
 define config.mouse = {
     "default": [("gui/cursor_default.png", 0, 0)],
     "button": [("gui/cursor_wait.png", 0, 0)],

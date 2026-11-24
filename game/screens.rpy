@@ -2,10 +2,17 @@
 # Layout and artwork follow the original game's 1280x960 screens.
 
 default save_page = 0
-default save_sel = 1
+default save_sel = "1-1"
+default save_sel_idx = 1
 
 init python:
     CN_NUM = "一二三四五六七八九十"
+
+    def save_goto_page(page):
+        """翻页后把光标放到新页的第一格，右侧信息栏才不会停在上一页。"""
+        store.save_page = page
+        store.save_sel = "%d-1" % (page + 1)
+        store.save_sel_idx = page * 7 + 1
 
     def set_autosave(on):
         persistent.autosave_on = bool(on)
@@ -121,6 +128,17 @@ screen main_menu():
             hover Transform("gui/menu_enter.png", zoom=0.66)
             action Start()
 
+    # ==== 临时：芙蓉女儿诔试看入口（日后连同 hlm_lei_demo.rpy 一起删）====
+    textbutton "· 试看：芙蓉女儿诔（临时）":
+        xpos 44
+        ypos 884
+        text_size 22
+        text_color "#8fb4c7"
+        text_hover_color "#ffffff"
+        text_outlines [(1, "#0b1c26aa", 0, 0)]
+        action Start("hlm_lei_demo")
+    # ==== 临时入口结束 ====
+
 
 # ---------------------------------------------------------------- confirm
 
@@ -160,150 +178,89 @@ screen confirm(message, yes_action, no_action):
 
 # ---------------------------------------------------------------- save/load
 
-screen file_slots(title):
+screen file_slots(title, mode="save"):
     tag menu
     add "gui/ui/save_bg.png" xysize (1280, 960)
     key "game_menu" action Return()
 
-    $ slot0 = save_page * 8 + 1
-    button:
-        xpos 90.2
-        ypos 150
-        xsize 66
-        ysize 690
-        background None
-        hover_background Solid("#00000010")
-        hovered SetVariable("save_sel", slot0)
-        action FileAction(slot0)
-    if save_sel == slot0:
-        add Transform("gui/ui/page_triangle.png", zoom=0.9) xpos 99.2 ypos 96
-    $ slot1 = save_page * 8 + 2
-    button:
-        xpos 156.8
-        ypos 150
-        xsize 66
-        ysize 690
-        background None
-        hover_background Solid("#00000010")
-        hovered SetVariable("save_sel", slot1)
-        action FileAction(slot1)
-    if save_sel == slot1:
-        add Transform("gui/ui/page_triangle.png", zoom=0.9) xpos 165.8 ypos 96
-    $ slot2 = save_page * 8 + 3
-    button:
-        xpos 223.2
-        ypos 150
-        xsize 66
-        ysize 690
-        background None
-        hover_background Solid("#00000010")
-        hovered SetVariable("save_sel", slot2)
-        action FileAction(slot2)
-    if save_sel == slot2:
-        add Transform("gui/ui/page_triangle.png", zoom=0.9) xpos 232.2 ypos 96
-    $ slot3 = save_page * 8 + 4
-    button:
-        xpos 289.8
-        ypos 150
-        xsize 66
-        ysize 690
-        background None
-        hover_background Solid("#00000010")
-        hovered SetVariable("save_sel", slot3)
-        action FileAction(slot3)
-    if save_sel == slot3:
-        add Transform("gui/ui/page_triangle.png", zoom=0.9) xpos 298.8 ypos 96
-    $ slot4 = save_page * 8 + 5
-    button:
-        xpos 356.2
-        ypos 150
-        xsize 66
-        ysize 690
-        background None
-        hover_background Solid("#00000010")
-        hovered SetVariable("save_sel", slot4)
-        action FileAction(slot4)
-    if save_sel == slot4:
-        add Transform("gui/ui/page_triangle.png", zoom=0.9) xpos 365.2 ypos 96
-    $ slot5 = save_page * 8 + 6
-    button:
-        xpos 422.8
-        ypos 150
-        xsize 66
-        ysize 690
-        background None
-        hover_background Solid("#00000010")
-        hovered SetVariable("save_sel", slot5)
-        action FileAction(slot5)
-    if save_sel == slot5:
-        add Transform("gui/ui/page_triangle.png", zoom=0.9) xpos 431.8 ypos 96
-    $ slot6 = save_page * 8 + 7
-    button:
-        xpos 489.2
-        ypos 150
-        xsize 66
-        ysize 690
-        background None
-        hover_background Solid("#00000010")
-        hovered SetVariable("save_sel", slot6)
-        action FileAction(slot6)
-    if save_sel == slot6:
-        add Transform("gui/ui/page_triangle.png", zoom=0.9) xpos 498.2 ypos 96
-    $ slot7 = save_page * 8 + 8
-    button:
-        xpos 555.8
-        ypos 150
-        xsize 66
-        ysize 690
-        background None
-        hover_background Solid("#00000010")
-        hovered SetVariable("save_sel", slot7)
-        action FileAction(slot7)
-    if save_sel == slot7:
-        add Transform("gui/ui/page_triangle.png", zoom=0.9) xpos 564.8 ypos 96
+    # 每页七格，一列一格：位置取自 save_bg.png 左页七条竖栏分隔线
+    # （原图像素 72/129/189/248/307/366/426/486 × 1.25）。
+    $ cols = (90, 161, 236, 310, 384, 458, 533, 608)
+    $ pages = 6
 
-    $ sname = FileSaveName(save_sel)
-    $ stime = FileTime(save_sel, "%Y-%m-%d %H:%M", empty="—")
-    $ srun = format_playtime(FileJson(save_sel, "_game_runtime", 0))
-    add Transform(FileScreenshot(save_sel), xysize=(480, 400)) xpos 700 ypos 120
+    for i in range(7):
+        $ slot = "%d-%d" % (save_page + 1, i + 1)
+        $ cx = cols[i]
+        $ cw = cols[i + 1] - cx
+        $ sname = FileSaveName(slot, slot=True)
+        $ slot_action = FileLoad(slot, slot=True) if mode == "load" else FileSave(slot, slot=True)
+        $ filled = FileLoadable(slot, slot=True)
+        button:
+            xpos cx
+            ypos 94
+            xsize cw
+            ysize 770
+            background None
+            hover_background Solid("#00000012")
+            hovered [SetVariable("save_sel", slot), SetVariable("save_sel_idx", save_page * 7 + i + 1)]
+            action slot_action
+            if sname:
+                text chr(10).join(sname.replace(chr(12288), "")) style "slot_name"
+            elif filled:
+                text chr(10).join("旧档") style "slot_name"
+            else:
+                text "空" style "slot_empty"
+        if save_sel == slot:
+            text "▼" style "slot_cursor" xpos (cx + cw // 2 - 11) ypos 54
+
+    # 翻页：整条侧栏都是热区，文字就是原版的竖排「下一页 / 上一页」
+    button:
+        xpos 0
+        ypos 664
+        xysize (90, 238)
+        background None
+        hover_background Solid("#00000012")
+        sensitive save_page < pages - 1
+        action Function(save_goto_page, min(save_page + 1, pages - 1))
+        add Transform("gui/ui/page_next.png", zoom=1.1) xalign 0.5 yalign 0.5 alpha (1.0 if save_page < pages - 1 else 0.3)
+    button:
+        xpos 1190
+        ypos 664
+        xysize (90, 238)
+        background None
+        hover_background Solid("#00000012")
+        sensitive save_page > 0
+        action Function(save_goto_page, max(save_page - 1, 0))
+        add Transform("gui/ui/page_prev.png", zoom=1.1) xalign 0.5 yalign 0.5 alpha (1.0 if save_page > 0 else 0.3)
+    $ pgtxt = "%d / %d" % (save_page + 1, pages)
+    text pgtxt size 20 color "#6b4a1e" xpos 0 xsize 90 text_align 0.5 ypos 908
+    text pgtxt size 20 color "#6b4a1e" xpos 1190 xsize 90 text_align 0.5 ypos 908
+
+    $ sname = FileSaveName(save_sel, slot=True)
+    $ sfill = FileLoadable(save_sel, slot=True)
+    $ shown_name = sname or ("旧存档" if sfill else "—")
+    $ stime = FileTime(save_sel, "%Y-%m-%d %H:%M", empty="—", slot=True)
+    $ srun = format_playtime(FileJson(save_sel, "_game_runtime", 0, slot=True))
+    add Transform(FileScreenshot(save_sel, slot=True), xysize=(480, 360)) xpos 700 ypos 150
     vbox:
         xpos 720
-        ypos 560
+        ypos 550
         spacing 8
-        text "序号：[save_sel]" size 30 color "#2f2417"
-        text "章节名：[sname or '—']" size 30 color "#2f2417"
+        text "序号：[save_sel_idx]" size 30 color "#2f2417"
+        text "章节名：[shown_name]" size 30 color "#2f2417"
         text "" size 14
         text "存档时间：[stime]" size 30 color "#2f2417"
         text "游戏时间：[srun]" size 30 color "#2f2417"
 
-    # 新 / 选 / 自 seals (decorative, as in the original screen)
-    add Transform("gui/ui/seal_2.png", zoom=0.8) xpos 388 ypos 742
-    add Transform("gui/ui/seal_1.png", zoom=0.8) xpos 470 ypos 742
-    add Transform("gui/ui/seal_0.png", zoom=0.8) xpos 552 ypos 742
-
-    imagebutton:
-        idle "gui/ui/page_next.png"
-        hover "gui/ui/page_next.png"
-        xpos 8
-        ypos 760
-        action SetVariable("save_page", min(save_page + 1, 4))
-    imagebutton:
-        idle "gui/ui/page_prev.png"
-        hover "gui/ui/page_prev.png"
-        xpos 1204
-        ypos 760
-        action SetVariable("save_page", max(save_page - 1, 0))
-    text CN_NUM[save_page] size 30 color "#2f2417" xpos 14 ypos 900
-
 
 screen save():
     tag menu
-    use file_slots("保存存档")
+    use file_slots("保存存档", "save")
 
 
 screen load():
     tag menu
-    use file_slots("读取存档")
+    use file_slots("读取存档", "load")
 
 
 # ---------------------------------------------------------------- options
@@ -466,6 +423,34 @@ style say_dialogue:
     size 30
     line_spacing 8
     xfill True
+
+style slot_box:
+    xpos 4
+    ypos 4
+    size 30
+    color "#000"
+
+style slot_cursor:
+    font "fonts/simhei.ttf"
+    size 26
+    color "#c0392b"
+    outlines [(1, "#00000033", 0, 0)]
+
+style slot_name:
+    font "fonts/simhei.ttf"
+    xalign 0.5
+    yalign 0.42
+    size 34
+    color "#2f2417"
+    line_spacing 2
+    text_align 0.5
+
+style slot_empty:
+    font "fonts/simhei.ttf"
+    xalign 0.5
+    yalign 0.44
+    size 40
+    color "#8a7355"
 
 style chapter_label:
     color "#d9b77a"
