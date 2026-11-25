@@ -186,3 +186,70 @@ init999  _game_menu_screen='esc_menu'
 - 场四背景用 `BG330`（凹晶馆池上·夜）顶「池上芙蓉」，全库无芙蓉专用背景。
 - 场三「裁一幅冰鲛縠」与后面「纸就卷了」的材质说法不统一，按原文优先取了「縠」，焚的那句留「纸」。
 - 演示结束直接 `full_restart` 回标题，不在存档里留下「章节」，也不写 `set_chapter`。
+
+## 2026-11 缺素材降级（文字版运行模式）
+
+**状态**：已接入 `game/runtime.rpy`。素材完整时行为完全不变，没有开关、没有提示、没有额外 UI。
+
+### 加了什么
+
+`game/runtime.rpy` 在 `image solid_white` 之后加了一个 `init -100 python:` 段（约 15 行）：
+把 `config.missing_image_callback` 指向 `_hlm_missing_image()`。图片文件不存在时返回
+`im.Null(...)`——引擎自带的 1x1 常量 `ImageBase`，`const_size=True` 会自动铺满分配区域：
+
+- 路径含 `/bg/` 或 `/cg/` → `im.Null("#000")`，效果就是纯黑屏；
+- 其它（立绘、界面装饰）→ `im.Null((0, 0, 0, 0))`，全透明，不会压住画面。
+
+`asset_manifest.json` 和 `change_bg` / `show_char` 那一层一个字没动，素材齐全时不触发回调。
+
+### 为什么不用别的办法
+
+- 仅把 `config.developer` 关掉只能让引擎不抛异常，画面会残留异常文本（`im.py:640-648` 的 `_image_error`），不干净。
+- 音频不需要守卫：`renpy/audio/audio.py:616-626` 的 except 分支只在 `config.debug_sound` 为真时重抛，默认为假，缺 bgm/语音/音效本来就静默。
+
+### 已验证（2026-11-25）
+
+- `renpy lint`：0 error，统计仍是 30,683 对白块 / 95 menus / 14 screens，与基线一致。
+- 把 `game/images` 整个移走后启动并跑到 `hlm_lei_demo`：无 traceback、无错误文本，背景纯黑，对白栏、文字、CTC 花标均正常渲染。
+- 把 `game/images` 放回后同样跑一遍：背景正常（中心采样色 37,85,136），说明回调在素材齐全时不影响渲染。
+
+### 已知边界
+
+- 只接管图片。`game/fonts/simhei.ttf` 缺失仍会在字体加载阶段报错（引擎没有 missing-font 回调）。
+- `game/gui/` 缺失时界面装饰走透明占位，文字仍然可读，只是没有边框和底板。
+
+## 2026-11 文字版发布流水线（GitHub Actions）
+
+**状态**：已接入 `.github/workflows/release-text-only.yml`，推 `v*` tag 或手动 dispatch 触发。
+
+### 产物形态
+
+Ren'Py 标准 Windows 版布局：`HongLou.exe` + `HongLou.py` + `lib/` + `renpy/` + `game/`，其中
+`game/` 只有两个 RPA：
+
+| 归档 | 内容 |
+|---|---|
+| `script.rpa` | 全部 `.rpyc`（不含 `.rpy` 源码）+ `data/asset_manifest.json` |
+| `ui.rpa` | `game/gui/**` + 子集化中文字体（按 `fonts/simhei.ttf` 这个名放进包） |
+
+`images.rpa` / `audio.rpa` / `video.rpa` 留给使用者自己补，引擎启动时自动合并索引
+（`renpy/loader.py` 的 `index_archives` 扫描 `game/*.rpa`）。
+
+### 工具
+
+| 文件 | 作用 |
+|---|---|
+| `tools/mk_rpa.py` | 写 RPA-3.0 归档（`python mk_rpa.py out.rpa 目录/`），格式对照 `renpy/loader.py` 的读写实现 |
+| `tools/make_font.py` | 扫 `game/*.rpy` 收集用到的字符，把开源中文字体子集化（本机实测 15.35 MB → 1.65 MB，3758 字） |
+| `tools/build_textonly.sh` | 编译 → 打 RPA → 装引擎 → 自检，`--sdk <SDK> [--font f] [--out build]` |
+
+### 已验证（2026-11-25）
+
+- 本机用 `--sdk <包内 RenPy/>` 跑完整构建，产物 86 MB；启动后背景纯黑、对白与 CTC 正常，无 `errors.txt` / `traceback.txt`。
+- 用子集字体（1.65 MB）构建的包实跑，中文无缺字、无豆腐块。
+- 主界面标题图、按钮、书法标题全部从 `ui.rpa` 正常读取，确认 RPA 里的 gui 与字体都能加载。
+
+### 已知边界
+
+- 只出 Windows x64 包；Arm64 需要另外塞 `lib/py3-windows-arm64`，stock SDK 没有。
+- 引擎版本锁在 8.5.3（`.github/workflows` 里的 `RENPY_VERSION`），SDK 的 `lib/python3.12` 必须与之匹配。

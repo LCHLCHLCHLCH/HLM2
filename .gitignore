@@ -26,3 +26,7 @@ __pycache__/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# 构建产物
+/build/
+/renpy-log.txt

@@ -345,6 +345,25 @@ transform char_pos_bright:
 image solid_black = Solid("#000")
 image solid_white = Solid("#fff")
 
+# 缺素材降级（文字版 / 素材缺失时的运行模式）：Ren'Py 在图片文件缺失时会调用
+# config.missing_image_callback，返回一个 ImageBase 就不再抛异常。
+# im.Null 是引擎自带的 1x1 常量图，const_size=True 会自动铺满分配区域：
+#   - 背景 / CG 给纯黑，效果就是「黑屏」
+#   - 立绘和其它装饰给全透明，避免黑块压住画面
+init -100 python:
+    import renpy.display.im as _hlm_im
+
+    _hlm_placeholder_black = _hlm_im.Null("#000")
+    _hlm_placeholder_clear = _hlm_im.Null((0, 0, 0, 0))
+
+    def _hlm_missing_image(filename):
+        name = str(filename or "").replace("\\", "/")
+        if "/bg/" in name or "/cg/" in name:
+            return _hlm_placeholder_black
+        return _hlm_placeholder_clear
+
+    config.missing_image_callback = _hlm_missing_image
+
 define narrator = Character(None, what_color="#1f1a14", ctc=Transform("gui/ui/flower_mark.png", zoom=1.1), ctc_position="nestled")
 define center_say = Character(None, screen="center_say_screen", ctc=Transform("gui/ui/flower_mark.png", zoom=1.1), ctc_position="nestled")
 

@@ -1,0 +1,87 @@
+# 构建并发布「文字版」：只含 Ren'Py 引擎 + RPA 打包的工程，不含图像 / 语音 / 影片。
+# 没有素材时游戏按 runtime.rpy 的缺素材降级逻辑运行（背景黑屏、立绘透明、无声）。
+# 使用者自行把 images.rpa / audio.rpa / video.rpa 放进 game/ 即可获得完整画面与配音。
+name: release-text-only
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  RENPY_VERSION: "8.5.3"
+  FONT_URL: "https://cdn.jsdelivr.net/gh/googlefonts/noto-cjk@main/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf"
+  ZIP_NAME: HLM2-textonly
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 素材不该进仓库
+        run: |
+          for d in game/images game/audio game/video; do
+            if [ -d "$d" ]; then echo "::error::$d 存在，仓库里不应包含素材"; exit 1; fi
+          done
+          echo "仓库内无素材目录，符合文字版定义"
+
+      - name: 缓存 Ren'Py SDK
+        id: sdk-cache
+        uses: actions/cache@v4
+        with:
+          path: sdk
+          key: renpy-sdk-${{ env.RENPY_VERSION }}
+
+      - name: 下载 Ren'Py SDK ${{ env.RENPY_VERSION }}
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL -o /tmp/sdk.zip "https://www.renpy.org/dl/${RENPY_VERSION}/renpy-${RENPY_VERSION}-sdk.zip"
+          unzip -q /tmp/sdk.zip -d /tmp/sdk-unpack
+          mkdir -p sdk
+          cp -r "/tmp/sdk-unpack/renpy-${RENPY_VERSION}-sdk/." sdk/
+          ls sdk | head
+
+      - name: 安装 fonttools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-fonttools p7zip-full || true
+          python3 -c "import fontTools" 2>/dev/null || python3 -m pip install --quiet --break-system-packages fonttools
+          python3 -c "import fontTools; print('fontTools', fontTools.version)"
+
+      - name: 生成中文字体子集
+        run: |
+          curl -fsSL -o /tmp/NotoSansSC-Regular.otf "$FONT_URL"
+          python3 tools/make_font.py --src /tmp/NotoSansSC-Regular.otf --out /tmp/game-font.otf
+          ls -lh /tmp/game-font.otf
+
+      - name: 构建文字版
+        run: |
+          chmod +x tools/build_textonly.sh
+          bash tools/build_textonly.sh --sdk "$PWD/sdk" --font /tmp/game-font.otf --out build
+
+      - name: 打包 zip
+        run: |
+          cd build
+          7z a -tzip -mx=9 "${ZIP_NAME}-${GITHUB_REF_NAME}.zip" ./* >/dev/null
+          ls -lh "${ZIP_NAME}-${GITHUB_REF_NAME}.zip"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: textonly-${{ github.ref_name }}
+          path: build/*.zip
+          retention-days: 14
+
+      - name: 发布到 GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "build/${ZIP_NAME}-${GITHUB_REF_NAME}.zip" \
+            --title "文字版 ${GITHUB_REF_NAME}" \
+            --notes-file .github/RELEASE_NOTES.md
